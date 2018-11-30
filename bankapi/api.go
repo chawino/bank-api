@@ -24,8 +24,8 @@ type UserService interface {
 	All() ([]User, error)
 	Insert(user *User) error
 	GetByID(id int) (*User, error)
+	Update(id int, first_name string, last_name string) (*User, error)
 	//DeleteByID(id int) error
-	//Update(id int, body string) (*User, error)
 }
 
 type UserServiceImp struct {
@@ -99,6 +99,15 @@ func (s *UserServiceImp) GetByID(id int) (*User, error) {
 	return &user, nil
 }
 
+func (s *UserServiceImp) Update(id int, fisrt_name string, last_name string) (*User, error) {
+	stmt := "UPDATE users SET first_name = $2, last_name = $3 WHERE id = $1"
+	_, err := s.db.Exec(stmt, id, fisrt_name, last_name)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetByID(id)
+}
+
 func AccessLogWrap(hand http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r.Method, r.URL.Path)
@@ -147,6 +156,21 @@ func (s *Server) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+func (s *Server) Update(c *gin.Context) {
+	h := map[string]string{}
+	if err := c.ShouldBindJSON(&h); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, err)
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	todo, err := s.userService.Update(id, h["first_name"], h["last_name"])
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, todo)
+}
+
 func setupRoute(s *Server) *gin.Engine {
 	r := gin.Default()
 	users := r.Group("/users")
@@ -159,7 +183,7 @@ func setupRoute(s *Server) *gin.Engine {
 	users.GET("/", s.All)
 	users.POST("/", s.Create)
 	users.GET("/:id", s.GetByID)
-	//todos.PUT("/:id", s.Update)
+	users.PUT("/:id", s.Update)
 	//todos.DELETE("/:id", s.DeleteByID)
 	//admin.POST("/secrets", s.CreateSecret)
 	return r
