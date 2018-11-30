@@ -15,23 +15,6 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Server struct {
-	db          *sql.DB
-	userService UserService
-}
-
-type UserService interface {
-	All() ([]User, error)
-	Insert(user *User) error
-	GetByID(id int) (*User, error)
-	Update(id int, first_name string, last_name string) (*User, error)
-	DeleteByID(id int) error
-}
-
-type UserServiceImp struct {
-	db *sql.DB
-}
-
 var ErrNotFound = errors.New("user: not found")
 
 type User struct {
@@ -47,7 +30,7 @@ type BankAccount struct {
 	mu            sync.Mutex
 	ID            int64     `json:"id"`
 	UserID        int64     `json:"user_id"`
-	AccountNumber string    `json:"account_number"`
+	AccountNumber string    `json:"account_number" binding:"required"`
 	Name          string    `json:"Name"`
 	Balance       int       `json:"balance"`
 	CreatedAt     time.Time `json:"createdAt"`
@@ -57,6 +40,38 @@ type BankAccount struct {
 type Secret struct {
 	ID  int64  `json:"id"`
 	Key string `json:"key" binding:"required"`
+}
+
+type Server struct {
+	db                 *sql.DB
+	userService        UserService
+	bankAccountService BankAccountService
+}
+
+type UserService interface {
+	All() ([]User, error)
+	Insert(user *User) error
+	InsertBankAccount(userId int, bankAccount *BankAccount) error
+	GetByID(id int) (*User, error)
+	Update(id int, first_name string, last_name string) (*User, error)
+	DeleteByID(id int) error
+}
+
+type BankAccountService interface {
+	Insert(userId int, bankAccount *BankAccount) error
+	GetByID(userId int) (*BankAccount, error)
+	//Deposit(userId int, balance int) (*BankAccount, error)
+	//Withdraw(userId int, balance int) (*BankAccount, error)
+	//DeleteByID(userId int) error
+	//Transfer(fromAccountNumber int, tooAccountNumber int, balance int) error
+}
+
+type UserServiceImp struct {
+	db *sql.DB
+}
+
+type BankAccountServiceImp struct {
+	db *sql.DB
 }
 
 func (s *UserServiceImp) All() ([]User, error) {
@@ -188,10 +203,53 @@ func (s *Server) DeleteByID(c *gin.Context) {
 	}
 }
 
+// ####### BANK ACCOUNT #########
+
+func (s *UserServiceImp) InsertBankAccount(userId int, bankAccount *BankAccount) error {
+	// check user_id exist
+	user, err := s.GetByID(userId)
+	if err != nil {
+		return err
+	}
+
+	// check account_number exist
+
+	now := time.Now()
+	bankAccount.CreatedAt = now
+	bankAccount.UpdatedAt = now
+	row := s.db.QueryRow("INSERT INTO bank_accounts (user_id, account_number, account_name, created_at, updated_at) values ($1, $2, $3, $4) RETURNING id", user.ID, bankAccount.AccountNumber, user.FirstName+" "+user.LastName, now, now)
+
+	if err := row.Scan(&user.ID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) CreateBankAccount(c *gin.Context) {
+	userId, _ := strconv.Atoi(c.Param("id"))
+	var bankAccount BankAccount
+	err := c.ShouldBindJSON(&bankAccount)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"object":  "error",
+			"message": fmt.Sprintf("json: wrong params: %s", err),
+		})
+		return
+	}
+
+	if err := s.userService.InsertBankAccount(userId, &bankAccount); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, bankAccount)
+}
+
 func setupRoute(s *Server) *gin.Engine {
 	r := gin.New()
 	r.Use(RequestLogger())
 	users := r.Group("/users")
+	//_ := r.Group("/bankAccount")
 	//admin := r.Group("/admin")
 
 	//admin.Use(gin.BasicAuth(gin.Accounts{
@@ -203,7 +261,10 @@ func setupRoute(s *Server) *gin.Engine {
 	users.GET("/:id", s.GetByID)
 	users.PUT("/:id", s.Update)
 	users.DELETE("/:id", s.DeleteByID)
+
+	users.POST("/:id/bankAccount", s.CreateBankAccount)
 	//admin.POST("/secrets", s.CreateSecret)
+
 	return r
 }
 
@@ -211,7 +272,7 @@ func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fmt.Println("####### Print request body #######") // Print request body
 		fmt.Println(c.Request)
-		fmt.Println("####### END Print #######") // Print request body
+		fmt.Println("####### END Print request body #######") // Print request body
 	}
 }
 
@@ -249,6 +310,9 @@ func StartServer() {
 		userService: &UserServiceImp{
 			db: db,
 		},
+		//bankAccountService: &BankAccountServiceImp{
+		//	db: db,
+		//},
 	}
 
 	r := setupRoute(s)
