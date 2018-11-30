@@ -31,7 +31,7 @@ type BankAccount struct {
 	ID            int64     `json:"id"`
 	UserID        int64     `json:"user_id"`
 	AccountNumber string    `json:"account_number" binding:"required"`
-	Name          string    `json:"Name"`
+	Name          string    `json:"name"`
 	Balance       int       `json:"balance"`
 	CreatedAt     time.Time `json:"createdAt"`
 	UpdatedAt     time.Time `json:"updatedAt"`
