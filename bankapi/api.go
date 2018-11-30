@@ -158,8 +158,7 @@ func setupRoute(s *Server) *gin.Engine {
 	//users.Use(s.AuthTodo)
 	users.GET("/", s.All)
 	users.POST("/", s.Create)
-	//
-	//todos.GET("/:id", s.GetByID)
+	users.GET("/:id", s.GetByID)
 	//todos.PUT("/:id", s.Update)
 	//todos.DELETE("/:id", s.DeleteByID)
 	//admin.POST("/secrets", s.CreateSecret)
