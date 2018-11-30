@@ -216,7 +216,7 @@ func RequestLogger() gin.HandlerFunc {
 		rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
 		rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf)) //We have to create a new Buffer, because rdr1 will be read.
 
-		fmt.Println(readBody(rdr1)) // Print request body
+		fmt.Println("####### Print request body #######\n" + readBody(rdr1) + "####### END Print #######") // Print request body
 
 		c.Request.Body = rdr2
 		c.Next()
