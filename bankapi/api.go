@@ -53,7 +53,7 @@ type UserService interface {
 	Insert(user *User) error
 	InsertBankAccount(bankAccount *BankAccount) error
 	GetByID(id int) (*User, error)
-	GetBankAccountByUserId(user int) (*BankAccount, error)
+	GetBankAccountsByUserId(user int) ([]BankAccount, error)
 	Update(id int, first_name string, last_name string) (*User, error)
 	DeleteByID(id int) error
 }
@@ -226,15 +226,21 @@ func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 	return nil
 }
 
-func (s *UserServiceImp) GetBankAccountByUserId(id int) (*BankAccount, error) {
-	stmt := "SELECT * FROM bank_accounts WHERE user_id = $1"
-	row := s.db.QueryRow(stmt, id)
-	var bankAccount BankAccount
-	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.AccountNumber, &bankAccount.Name, &bankAccount.Balance, &bankAccount.CreatedAt, &bankAccount.UpdatedAt)
+func (s *UserServiceImp) GetBankAccountsByUserId(id int) ([]BankAccount, error) {
+	rows, err := s.db.Query("SELECT * FROM bank_accounts WHERE user_id = $1", id)
 	if err != nil {
 		return nil, err
 	}
-	return &bankAccount, nil
+	bankAccounts := []BankAccount{} // set empty slice without nil
+	for rows.Next() {
+		var bankAccount BankAccount
+		err := rows.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.AccountNumber, &bankAccount.Name, &bankAccount.Balance, &bankAccount.UpdatedAt, &bankAccount.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		bankAccounts = append(bankAccounts, bankAccount)
+	}
+	return bankAccounts, nil
 }
 
 func (s *Server) CreateBankAccount(c *gin.Context) {
@@ -259,14 +265,14 @@ func (s *Server) CreateBankAccount(c *gin.Context) {
 	c.JSON(http.StatusCreated, bankAccount)
 }
 
-func (s *Server) GetBankAccountByUserId(c *gin.Context) {
+func (s *Server) GetBankAccountsByUserId(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	user, err := s.userService.GetBankAccountByUserId(id)
+	bankAccount, err := s.userService.GetBankAccountsByUserId(id)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, bankAccount)
 }
 
 func setupRoute(s *Server) *gin.Engine {
@@ -287,7 +293,7 @@ func setupRoute(s *Server) *gin.Engine {
 	users.DELETE("/:id", s.DeleteByID)
 
 	users.POST("/:id/bankAccount", s.CreateBankAccount)
-	users.GET("/:id/bankAccount", s.GetBankAccountByUserId)
+	users.GET("/:id/bankAccount", s.GetBankAccountsByUserId)
 	//admin.POST("/secrets", s.CreateSecret)
 
 	return r
