@@ -218,7 +218,8 @@ func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 	now := time.Now()
 	bankAccount.CreatedAt = now
 	bankAccount.UpdatedAt = now
-	row := s.db.QueryRow("INSERT INTO bank_accounts (user_id, account_number, account_name, created_at, updated_at) values ($1, $2, $3, $4, $5) RETURNING id", bankAccount.UserID, bankAccount.AccountNumber, user.FirstName+user.LastName, now, now)
+	bankAccount.Balance = 0
+	row := s.db.QueryRow("INSERT INTO bank_accounts (user_id, account_number, account_name, balance, created_at, updated_at) values ($1, $2, $3, $4, $5, $6) RETURNING id", bankAccount.UserID, bankAccount.AccountNumber, user.FirstName+user.LastName, bankAccount.Balance, now, now)
 
 	if err := row.Scan(&bankAccount.ID); err != nil {
 		return err
