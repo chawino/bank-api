@@ -324,8 +324,7 @@ func StartServer() {
 		updated_at TIMESTAMP WITHOUT TIME ZONE
 	);
 	`
-	fuser
-
+	
 	if _, err := db.Exec(createTable); err != nil {
 		fmt.Printf("%s", err)
 		return
