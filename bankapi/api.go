@@ -21,7 +21,7 @@ type Server struct {
 
 type UserService interface {
 	All() ([]UserAccount, error)
-	Insert(todo *UserAccount) error
+	Insert(user *UserAccount) error
 	//GetByID(id int) (*User, error)
 	//DeleteByID(id int) error
 	//Update(id int, body string) (*User, error)
@@ -59,7 +59,7 @@ type Secret struct {
 }
 
 func (s *UserServiceImp) All() ([]UserAccount, error) {
-	rows, err := s.db.Query("SELECT id, todo, updated_at, created_at FROM users")
+	rows, err := s.db.Query("SELECT id, user, updated_at, created_at FROM users")
 	if err != nil {
 		return nil, err
 	}
