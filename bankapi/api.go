@@ -230,7 +230,7 @@ func (s *UserServiceImp) GetBankAccountByUserId(id int) (*BankAccount, error) {
 	stmt := "SELECT * FROM bank_account WHERE user_id = $1"
 	row := s.db.QueryRow(stmt, id)
 	var bankAccount BankAccount
-	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.AccountNumber, &bankAccount.AccountNumber, &bankAccount.Balance, &bankAccount.CreatedAt, &bankAccount.UpdatedAt, &bankAccount.UpdatedAt)
+	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.AccountNumber, &bankAccount.Name, &bankAccount.Balance, &bankAccount.CreatedAt, &bankAccount.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
