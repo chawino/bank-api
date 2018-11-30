@@ -229,7 +229,7 @@ func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 
 func (s *UserServiceImp) GetBankAccountsByUserId(id int) ([]BankAccount, error) {
 	fmt.Println("GetBankAccountsByUserId " + strconv.Itoa(id))
-	rows, err := s.db.Query("SELECT * FROM bank_accounts")
+	rows, err := s.db.Query("SELECT * FROM bank_accounts WHERE user_id = $1", id)
 	if err != nil {
 		return nil, err
 	}
