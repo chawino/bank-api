@@ -147,10 +147,10 @@ func setupRoute(s *Server) *gin.Engine {
 	return r
 }
 
-func StartServer() error {
+func StartServer() {
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
-		return err
+		return
 	}
 	createTable := `
 	CREATE TABLE IF NOT EXISTS users (
@@ -172,7 +172,7 @@ func StartServer() error {
 	`
 
 	if _, err := db.Exec(createTable); err != nil {
-		return err
+		return
 	}
 
 	s := &Server{
@@ -186,10 +186,6 @@ func StartServer() error {
 
 	r.Run(":" + os.Getenv("PORT"))
 
-	return nil
-
-	//http.HandleFunc("/users/", allUserHandler)
-	//http.Handle("/users/", AccessLogWrap(AccountHandler))
-	//return http.ListenAndServe(":8000", nil)
+	return
 }
 
