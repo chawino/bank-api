@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -212,15 +211,21 @@ func setupRoute(s *Server) *gin.Engine {
 
 func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		buf, _ := ioutil.ReadAll(c.Request.Body)
-		rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
-		rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf)) //We have to create a new Buffer, because rdr1 will be read.
-
-		fmt.Println("####### Print request body #######\n" + readBody(rdr1) + "####### END Print #######") // Print request body
-
-		c.Request.Body = rdr2
-		c.Next()
+		events(c)
 	}
+}
+
+type E struct {
+	Events string
+}
+
+func events(c *gin.Context) {
+	data := &E{}
+	c.Bind(data)
+	fmt.Println("####### Print request body #######") // Print request body
+	fmt.Println(data)
+	fmt.Println("####### END Print #######") // Print request body
+	c.JSON(http.StatusOK, c)
 }
 
 func readBody(reader io.Reader) string {
