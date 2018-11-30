@@ -285,6 +285,7 @@ func setupRoute(s *Server) *gin.Engine {
 	users.DELETE("/:id", s.DeleteByID)
 
 	users.POST("/:id/bankAccount", s.CreateBankAccount)
+	users.GET("/:id/bankAccount", s.GetBankAccountByUserId)
 	//admin.POST("/secrets", s.CreateSecret)
 
 	return r
