@@ -89,14 +89,14 @@ func (s *UserServiceImp) Insert(user *User) error {
 }
 
 func (s *UserServiceImp) GetByID(id int) (*User, error) {
-	stmt := "SELECT * FROM todos WHERE id = $1"
+	stmt := "SELECT * FROM users WHERE id = $1"
 	row := s.db.QueryRow(stmt, id)
-	var todo User
-	err := row.Scan(&todo.ID, &todo.FirstName, &todo.LastName, &todo.CreatedAt, &todo.UpdatedAt)
+	var user User
+	err := row.Scan(&user.ID, &user.FirstName, &user.LastName, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
-	return &todo, nil
+	return &user, nil
 }
 
 func AccessLogWrap(hand http.Handler) http.Handler {
