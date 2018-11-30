@@ -164,7 +164,7 @@ func StartServer() error {
 		id SERIAL PRIMARY KEY,
 		user_id SERIAL,
 		account_number TEXT UNIQUE,
-		name TEXT,
+		account_name TEXT,
 		balance TEXT,
 		created_at TIMESTAMP WITHOUT TIME ZONE,
 		updated_at TIMESTAMP WITHOUT TIME ZONE
