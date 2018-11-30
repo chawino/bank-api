@@ -232,9 +232,12 @@ func (s *UserServiceImp) GetBankAccountsByUserId(id int) ([]BankAccount, error) 
 	if err != nil {
 		return nil, err
 	}
+
+	//fmt.Println("GetBankAccountsByUserId rows size" + strconv.Itoa(len(rows)))
 	bankAccounts := []BankAccount{} // set empty slice without nil
 	for rows.Next() {
 		var bankAccount BankAccount
+		fmt.Println("GetBankAccountsByUserId rows size" + bankAccount.AccountNumber)
 		err := rows.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.AccountNumber, &bankAccount.Name, &bankAccount.Balance, &bankAccount.UpdatedAt, &bankAccount.CreatedAt)
 		if err != nil {
 			return nil, err
