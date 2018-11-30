@@ -330,7 +330,7 @@ func StartServer() {
 		user_id INTEGER,
 		account_number TEXT UNIQUE,
 		account_name TEXT,
-		balance TEXT,
+		balance INTEGER,
 		created_at TIMESTAMP WITHOUT TIME ZONE,
 		updated_at TIMESTAMP WITHOUT TIME ZONE
 	);
