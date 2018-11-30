@@ -7,8 +7,6 @@ import (
 )
 
 func main() {
-	//bankapi.StartServer()
-
 	db, err := sql.Open("postgres", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal(err)
