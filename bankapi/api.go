@@ -240,6 +240,7 @@ func (s *UserServiceImp) GetBankAccountsByUserId(id int) ([]BankAccount, error) 
 		fmt.Println("GetBankAccountsByUserId rows size" + bankAccount.AccountNumber)
 		err := rows.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.AccountNumber, &bankAccount.Name, &bankAccount.Balance, &bankAccount.UpdatedAt, &bankAccount.CreatedAt)
 		if err != nil {
+			fmt.Println("GetBankAccountsByUserId error")
 			return nil, err
 		}
 		bankAccounts = append(bankAccounts, bankAccount)
