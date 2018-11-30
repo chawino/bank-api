@@ -20,8 +20,8 @@ type Server struct {
 }
 
 type UserService interface {
-	All() ([]User, error)
-	Insert(todo *User) error
+	All() ([]UserAccount, error)
+	Insert(todo *UserAccount) error
 	//GetByID(id int) (*User, error)
 	//DeleteByID(id int) error
 	//Update(id int, body string) (*User, error)
@@ -34,7 +34,7 @@ type UserServiceImp struct {
 
 var ErrNotFound = errors.New("user: not found")
 
-type User struct {
+type UserAccount struct {
 	mu        sync.Mutex
 	ID        int64     `json:"id"`
 	FirstName string    `json:"first_name" binding:"required"`
@@ -59,14 +59,14 @@ type Secret struct {
 	Key string `json:"key" binding:"required"`
 }
 
-func (s *UserServiceImp) All() ([]User, error) {
+func (s *UserServiceImp) All() ([]UserAccount, error) {
 	rows, err := s.db.Query("SELECT id, todo, updated_at, created_at FROM users")
 	if err != nil {
 		return nil, err
 	}
-	users := []User{} // set empty slice without nil
+	users := []UserAccount{} // set empty slice without nil
 	for rows.Next() {
-		var user User
+		var user UserAccount
 		err := rows.Scan(&user.ID, &user.FirstName, &user.LastName, &user.UpdatedAt, &user.CreatedAt)
 		if err != nil {
 			return nil, err
@@ -76,7 +76,7 @@ func (s *UserServiceImp) All() ([]User, error) {
 	return users, nil
 }
 
-func (s *UserServiceImp) Insert(user *User) error {
+func (s *UserServiceImp) Insert(user *UserAccount) error {
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now
@@ -110,7 +110,7 @@ func (s *Server) All(c *gin.Context) {
 
 
 func (s *Server) Create(c *gin.Context) {
-	var user User
+	var user UserAccount
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
@@ -187,7 +187,5 @@ func StartServer() {
 	r := setupRoute(s)
 
 	r.Run(":" + os.Getenv("PORT"))
-
-	return
 }
 
