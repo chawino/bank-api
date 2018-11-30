@@ -59,7 +59,7 @@ type Secret struct {
 }
 
 func (s *UserServiceImp) All() ([]UserAccount, error) {
-	rows, err := s.db.Query("SELECT id, user, updated_at, created_at FROM users")
+	rows, err := s.db.Query("SELECT * FROM users")
 	if err != nil {
 		return nil, err
 	}
