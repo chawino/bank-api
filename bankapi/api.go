@@ -51,7 +51,7 @@ type Server struct {
 type UserService interface {
 	All() ([]User, error)
 	Insert(user *User) error
-	InsertBankAccount(userId int, bankAccount *BankAccount) error
+	InsertBankAccount(bankAccount *BankAccount) error
 	GetByID(id int) (*User, error)
 	GetBankAccountByUserId(user int) (*BankAccount, error)
 	Update(id int, first_name string, last_name string) (*User, error)
@@ -206,9 +206,9 @@ func (s *Server) DeleteByID(c *gin.Context) {
 
 // ####### BANK ACCOUNT #########
 
-func (s *UserServiceImp) InsertBankAccount(userId int, bankAccount *BankAccount) error {
+func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 	// check user_id exist
-	user, err := s.GetByID(userId)
+	user, err := s.GetByID(int(bankAccount.UserID))
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,9 @@ func (s *Server) CreateBankAccount(c *gin.Context) {
 		return
 	}
 
-	if err := s.userService.InsertBankAccount(userId, &bankAccount); err != nil {
+	bankAccount.UserID = int64(userId)
+
+	if err := s.userService.InsertBankAccount(&bankAccount); err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
 		return
 	}
