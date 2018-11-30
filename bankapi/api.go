@@ -1,10 +1,13 @@
 package bankapi
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -25,7 +28,7 @@ type UserService interface {
 	Insert(user *User) error
 	GetByID(id int) (*User, error)
 	Update(id int, first_name string, last_name string) (*User, error)
-	//DeleteByID(id int) error
+	DeleteByID(id int) error
 }
 
 type UserServiceImp struct {
@@ -108,6 +111,15 @@ func (s *UserServiceImp) Update(id int, fisrt_name string, last_name string) (*U
 	return s.GetByID(id)
 }
 
+func (s *UserServiceImp) DeleteByID(id int) error {
+	stmt := "DELETE FROM users WHERE id = $1"
+	_, err := s.db.Exec(stmt, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func AccessLogWrap(hand http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r.Method, r.URL.Path)
@@ -171,8 +183,17 @@ func (s *Server) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, todo)
 }
 
+func (s *Server) DeleteByID(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	if err := s.userService.DeleteByID(id); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+}
+
 func setupRoute(s *Server) *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
+	r.Use(RequestLogger())
 	users := r.Group("/users")
 	//admin := r.Group("/admin")
 
@@ -184,9 +205,30 @@ func setupRoute(s *Server) *gin.Engine {
 	users.POST("/", s.Create)
 	users.GET("/:id", s.GetByID)
 	users.PUT("/:id", s.Update)
-	//todos.DELETE("/:id", s.DeleteByID)
+	users.DELETE("/:id", s.DeleteByID)
 	//admin.POST("/secrets", s.CreateSecret)
 	return r
+}
+
+func RequestLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		buf, _ := ioutil.ReadAll(c.Request.Body)
+		rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
+		rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf)) //We have to create a new Buffer, because rdr1 will be read.
+
+		fmt.Println(readBody(rdr1)) // Print request body
+
+		c.Request.Body = rdr2
+		c.Next()
+	}
+}
+
+func readBody(reader io.Reader) string {
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(reader)
+
+	s := buf.String()
+	return s
 }
 
 func StartServer() {
