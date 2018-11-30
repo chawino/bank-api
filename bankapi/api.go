@@ -218,7 +218,7 @@ func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 	now := time.Now()
 	bankAccount.CreatedAt = now
 	bankAccount.UpdatedAt = now
-	row := s.db.QueryRow("INSERT INTO bank_accounts (user_id, account_number, account_name, created_at, updated_at) values ($1, $2, $3, $4, $5) RETURNING id", userId, bankAccount.AccountNumber, user.FirstName + user.LastName, now, now)
+	row := s.db.QueryRow("INSERT INTO bank_accounts (user_id, account_number, account_name, created_at, updated_at) values ($1, $2, $3, $4, $5) RETURNING id", bankAccount.UserID, bankAccount.AccountNumber, user.FirstName+user.LastName, now, now)
 
 	if err := row.Scan(&user.ID); err != nil {
 		return err
@@ -324,6 +324,7 @@ func StartServer() {
 		updated_at TIMESTAMP WITHOUT TIME ZONE
 	);
 	`
+	fuser
 
 	if _, err := db.Exec(createTable); err != nil {
 		fmt.Printf("%s", err)
