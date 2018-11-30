@@ -1,12 +1,10 @@
 package bankapi
 
 import (
-	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -211,29 +209,10 @@ func setupRoute(s *Server) *gin.Engine {
 
 func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		events(c)
+		fmt.Println("####### Print request body #######") // Print request body
+		fmt.Println(c.Request)
+		fmt.Println("####### END Print #######") // Print request body
 	}
-}
-
-type E struct {
-	Events string
-}
-
-func events(c *gin.Context) {
-	data := &E{}
-	c.Bind(data)
-	fmt.Println("####### Print request body #######") // Print request body
-	fmt.Println(data)
-	fmt.Println("####### END Print #######") // Print request body
-	c.JSON(http.StatusOK, c)
-}
-
-func readBody(reader io.Reader) string {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(reader)
-
-	s := buf.String()
-	return s
 }
 
 func StartServer() {
