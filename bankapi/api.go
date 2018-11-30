@@ -227,7 +227,7 @@ func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 }
 
 func (s *UserServiceImp) GetBankAccountsByUserId(id int) ([]BankAccount, error) {
-	rows, err := s.db.Query("SELECT * FROM bank_accounts WHERE user_id = $1", id)
+	rows, err := s.db.Query("SELECT * FROM bank_accounts")
 	if err != nil {
 		return nil, err
 	}
@@ -267,12 +267,12 @@ func (s *Server) CreateBankAccount(c *gin.Context) {
 
 func (s *Server) GetBankAccountsByUserId(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	bankAccount, err := s.userService.GetBankAccountsByUserId(id)
+	bankAccounts, err := s.userService.GetBankAccountsByUserId(id)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
 		return
 	}
-	c.JSON(http.StatusOK, bankAccount)
+	c.JSON(http.StatusOK, bankAccounts)
 }
 
 func setupRoute(s *Server) *gin.Engine {
