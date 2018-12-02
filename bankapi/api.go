@@ -320,17 +320,19 @@ func (s *BankAccountServiceImp) Deposit(id int, amount int) (*BankAccount, error
 		return nil, err
 	}
 
-	balance := bankAccount.Balance
-	b := balance + amount
-	bankAccount.Balance = b
-
-	stmt = "UPDATE bank_accounts SET balance = $2 WHERE id = $1"
-	_, err = s.db.Exec(stmt, id, b)
-	if err != nil {
-		return nil, err
-	}
-
 	return &bankAccount, nil
+
+	//balance := bankAccount.Balance
+	//b := balance + amount
+	//bankAccount.Balance = b
+	//
+	//stmt = "UPDATE bank_accounts SET balance = $2 WHERE id = $1"
+	//_, err = s.db.Exec(stmt, id, b)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	//return &bankAccount, nil
 }
 
 func (s *Server) GetBankAccountByBankAccountId(id int) (*BankAccount, error) {
