@@ -312,27 +312,25 @@ func (s *Server) DepositByID(c *gin.Context) {
 }
 
 func (s *BankAccountServiceImp) Deposit(id int, amount int) (*BankAccount, error) {
-	stmt := "SELECT id, user_id, balance FROM bank_accounts WHERE id = $1"
+	stmt := "SELECT * FROM bank_accounts WHERE id = $1"
 	row := s.db.QueryRow(stmt, id)
 	var bankAccount BankAccount
-	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.Balance)
+	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.AccountNumber, &bankAccount.Name, &bankAccount.Balance, &bankAccount.CreatedAt, &bankAccount.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	
+	balance := bankAccount.Balance
+	b := balance + amount
+	bankAccount.Balance = b
+
+	stmt = "UPDATE bank_accounts SET balance = $2 WHERE id = $1"
+	_, err = s.db.Exec(stmt, id, b)
 	if err != nil {
 		return nil, err
 	}
 
 	return &bankAccount, nil
-
-	//balance := bankAccount.Balance
-	//b := balance + amount
-	//bankAccount.Balance = b
-	//
-	//stmt = "UPDATE bank_accounts SET balance = $2 WHERE id = $1"
-	//_, err = s.db.Exec(stmt, id, b)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	//return &bankAccount, nil
 }
 
 func (s *Server) GetBankAccountByBankAccountId(id int) (*BankAccount, error) {
@@ -362,10 +360,10 @@ func (s *Server) WithdrawByID(c *gin.Context) {
 }
 
 func (s *BankAccountServiceImp) Withdraw(id int, amount int) (*BankAccount, error) {
-	stmt := "SELECT id, user_id, balance FROM bank_accounts WHERE id = $1"
+	stmt := "SELECT * FROM bank_accounts WHERE id = $1"
 	row := s.db.QueryRow(stmt, id)
 	var bankAccount BankAccount
-	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.Balance)
+	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.AccountNumber, &bankAccount.Name, &bankAccount.Balance, &bankAccount.CreatedAt, &bankAccount.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
