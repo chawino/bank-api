@@ -300,7 +300,7 @@ func setupRoute(s *Server) *gin.Engine {
 	r := gin.New()
 	r.Use(RequestLogger())
 	users := r.Group("/users")
-	bankAccount := r.Group("/bankAccount")
+	bankAccounts := r.Group("/bankAccounts")
 	//admin := r.Group("/admin")
 
 	//admin.Use(gin.BasicAuth(gin.Accounts{
@@ -315,7 +315,7 @@ func setupRoute(s *Server) *gin.Engine {
 
 	users.POST("/:id/bankAccount", s.CreateBankAccount)
 	users.GET("/:id/bankAccount", s.GetBankAccountsByUserId)
-	bankAccount.DELETE("/:id", s.DeleteAccountByBankAccountId)
+	bankAccounts.DELETE("/:id", s.DeleteAccountByBankAccountId)
 	//admin.POST("/secrets", s.CreateSecret)
 
 	return r
