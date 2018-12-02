@@ -449,13 +449,14 @@ func (s *Server) Transfer(c *gin.Context) {
 	err := s.transferService.Transfer(h.From, h.To, h.Amount)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"object":  "error",
+			"status":  "error",
 			"message": fmt.Sprintf("%s", err),
 		})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"object":  "success",
+		"status":  "success",
+		"message":  "transferred",
 	})
 }
 
