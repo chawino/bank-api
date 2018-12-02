@@ -46,6 +46,7 @@ type Server struct {
 	db                 *sql.DB
 	userService        UserService
 	bankAccountService BankAccountService
+	transferService    TransferService
 }
 
 type UserService interface {
@@ -65,11 +66,19 @@ type BankAccountService interface {
 	//Transfer(fromAccountNumber int, tooAccountNumber int, balance int) error
 }
 
+type TransferService interface {
+	Transfer(from string, to string, amount int) error
+}
+
 type UserServiceImp struct {
 	db *sql.DB
 }
 
 type BankAccountServiceImp struct {
+	db *sql.DB
+}
+
+type TransferServiceImp struct {
 	db *sql.DB
 }
 
@@ -319,7 +328,7 @@ func (s *BankAccountServiceImp) Deposit(id int, amount int) (*BankAccount, error
 	if err != nil {
 		return nil, err
 	}
-	
+
 	balance := bankAccount.Balance
 	b := balance + amount
 	bankAccount.Balance = b
@@ -381,11 +390,78 @@ func (s *BankAccountServiceImp) Withdraw(id int, amount int) (*BankAccount, erro
 	return &bankAccount, nil
 }
 
+// #### TRANSFER Service ####
+
+func (s *Server) Transfer(c *gin.Context) {
+	h := struct {
+		From string `json:"from"`
+		To string `json:"to"`
+		Amount int `json:"amount"`
+	}{}
+	if err := c.ShouldBindJSON(&h); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, err)
+		return
+	}
+	err := s.transferService.Transfer(h.From, h.To, h.Amount)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, nil)
+}
+
+
+func (s *BankAccountServiceImp) Transfer(from string, to string, amount int) error {
+	// query from account
+	stmt := "SELECT * FROM bank_accounts WHERE account_number = $1"
+	row := s.db.QueryRow(stmt, from)
+	var fromAccount BankAccount
+	err := row.Scan(&fromAccount.ID, &fromAccount.UserID, &fromAccount.AccountNumber, &fromAccount.Name, &fromAccount.Balance, &fromAccount.CreatedAt, &fromAccount.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	// query to account
+	stmt = "SELECT * FROM bank_accounts WHERE account_number = $1"
+	row = s.db.QueryRow(stmt, to)
+	var toAccount BankAccount
+	err = row.Scan(&toAccount.ID, &toAccount.UserID, &toAccount.AccountNumber, &toAccount.Name, &toAccount.Balance, &toAccount.CreatedAt, &toAccount.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	// check balance from account
+	balanceFrom := fromAccount.Balance
+	if balanceFrom < amount {
+		return errors.New("Balance lower amount")
+	}
+
+	// update balance from account before add amount to receiver
+	fromAccount.Balance = balanceFrom - amount
+
+	stmt = "UPDATE bank_accounts SET balance = $2 WHERE account_number = $1"
+	_, err = s.db.Exec(stmt, from, fromAccount.Balance)
+	if err != nil {
+		return err
+	}
+
+	// update balance to account after ... amount to receiver
+	toAccount.Balance = toAccount.Balance + amount
+
+	stmt = "UPDATE bank_accounts SET balance = $2 WHERE account_number = $1"
+	_, err = s.db.Exec(stmt, to, toAccount.Balance)
+	if err != nil {
+		return err
+	}
+	
+	return nil
+}
 func setupRoute(s *Server) *gin.Engine {
 	r := gin.New()
 	r.Use(RequestLogger())
 	users := r.Group("/users")
 	bankAccounts := r.Group("/bankAccounts")
+	transfers := r.Group("/transfers")
 	//admin := r.Group("/admin")
 
 	//admin.Use(gin.BasicAuth(gin.Accounts{
@@ -403,6 +479,8 @@ func setupRoute(s *Server) *gin.Engine {
 	bankAccounts.DELETE("/:id", s.DeleteAccountByBankAccountID)
 	bankAccounts.PUT("/:id/withdraw", s.WithdrawByID)
 	bankAccounts.PUT("/:id/deposit", s.DepositByID)
+
+	transfers.POST("/", s.Transfer)
 	//admin.POST("/secrets", s.CreateSecret)
 
 	return r
@@ -451,6 +529,9 @@ func StartServer() {
 			db: db,
 		},
 		bankAccountService: &BankAccountServiceImp{
+			db: db,
+		},
+		transferService: &TransferServiceImp{
 			db: db,
 		},
 	}
