@@ -450,11 +450,13 @@ func (s *Server) Transfer(c *gin.Context) {
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"object":  "error",
-			"message": fmt.Sprintf("db %s", err),
+			"message": fmt.Sprintf("%s", err),
 		})
 		return
 	}
-	c.JSON(http.StatusOK, nil)
+	c.JSON(http.StatusOK, gin.H{
+		"object":  "success",
+	})
 }
 
 func (s *TransferServiceImp) Transfer(from string, to string, amount int) error {
