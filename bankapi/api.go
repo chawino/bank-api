@@ -394,9 +394,9 @@ func (s *BankAccountServiceImp) Withdraw(id int, amount int) (*BankAccount, erro
 
 func (s *Server) Transfer(c *gin.Context) {
 	h := struct {
-		From string `json:"from"`
-		To string `json:"to"`
-		Amount int `json:"amount"`
+		From   string `json:"from"`
+		To     string `json:"to"`
+		Amount int    `json:"amount"`
 	}{}
 	if err := c.ShouldBindJSON(&h); err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, err)
@@ -404,12 +404,14 @@ func (s *Server) Transfer(c *gin.Context) {
 	}
 	err := s.transferService.Transfer(h.From, h.To, h.Amount)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"object":  "error",
+			"message": fmt.Sprintf("db %s", err),
+		})
 		return
 	}
 	c.JSON(http.StatusOK, nil)
 }
-
 
 func (s *TransferServiceImp) Transfer(from string, to string, amount int) error {
 	// query from account
