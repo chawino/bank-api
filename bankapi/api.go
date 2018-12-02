@@ -411,7 +411,7 @@ func (s *Server) Transfer(c *gin.Context) {
 }
 
 
-func (s *BankAccountServiceImp) Transfer(from string, to string, amount int) error {
+func (s *TransferServiceImp) Transfer(from string, to string, amount int) error {
 	// query from account
 	stmt := "SELECT * FROM bank_accounts WHERE account_number = $1"
 	row := s.db.QueryRow(stmt, from)
@@ -453,7 +453,7 @@ func (s *BankAccountServiceImp) Transfer(from string, to string, amount int) err
 	if err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 func setupRoute(s *Server) *gin.Engine {
