@@ -363,9 +363,9 @@ func StartServer() {
 		userService: &UserServiceImp{
 			db: db,
 		},
-		//bankAccountService: &BankAccountServiceImp{
-		//	db: db,
-		//},
+		bankAccountService: &BankAccountServiceImp{
+			db: db,
+		},
 	}
 
 	r := setupRoute(s)
