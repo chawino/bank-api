@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -47,6 +46,7 @@ type Server struct {
 	userService        UserService
 	bankAccountService BankAccountService
 	transferService    TransferService
+	secretService      SecretService
 }
 
 type UserService interface {
@@ -63,26 +63,47 @@ type BankAccountService interface {
 	Deposit(bankAccountId int, balance int) (*BankAccount, error)
 	Withdraw(bankAccountId int, balance int) (*BankAccount, error)
 	DeleteAccountByBankAccountID(bankAccountId int) error
-	//Transfer(fromAccountNumber int, tooAccountNumber int, balance int) error
 }
 
 type TransferService interface {
 	Transfer(from string, to string, amount int) error
 }
 
+type SecretService interface {
+	Insert(s *Secret) error
+}
+
+type SecretServiceImp struct {
+	db *sql.DB
+}
+
+func (s *SecretServiceImp) Insert(secret *Secret) error {
+	row := s.db.QueryRow("INSERT INTO secrets (key) values ($1) RETURNING id", secret.Key)
+
+	if err := row.Scan(&secret.ID); err != nil {
+		return err
+	}
+	return nil
+}
+
 type UserServiceImp struct {
+	mu sync.Mutex
 	db *sql.DB
 }
 
 type BankAccountServiceImp struct {
+	mu sync.Mutex
 	db *sql.DB
 }
 
 type TransferServiceImp struct {
+	mu sync.Mutex
 	db *sql.DB
 }
 
 func (s *UserServiceImp) All() ([]User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	rows, err := s.db.Query("SELECT * FROM users")
 	if err != nil {
 		return nil, err
@@ -100,6 +121,8 @@ func (s *UserServiceImp) All() ([]User, error) {
 }
 
 func (s *UserServiceImp) Insert(user *User) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	now := time.Now()
 	user.CreatedAt = now
 	user.UpdatedAt = now
@@ -112,6 +135,8 @@ func (s *UserServiceImp) Insert(user *User) error {
 }
 
 func (s *UserServiceImp) GetByID(id int) (*User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	stmt := "SELECT * FROM users WHERE id = $1"
 	row := s.db.QueryRow(stmt, id)
 	var user User
@@ -123,6 +148,8 @@ func (s *UserServiceImp) GetByID(id int) (*User, error) {
 }
 
 func (s *UserServiceImp) Update(id int, fisrt_name string, last_name string) (*User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	stmt := "UPDATE users SET first_name = $2, last_name = $3 WHERE id = $1"
 	_, err := s.db.Exec(stmt, id, fisrt_name, last_name)
 	if err != nil {
@@ -132,19 +159,14 @@ func (s *UserServiceImp) Update(id int, fisrt_name string, last_name string) (*U
 }
 
 func (s *UserServiceImp) DeleteByID(id int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	stmt := "DELETE FROM users WHERE id = $1"
 	_, err := s.db.Exec(stmt, id)
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-func AccessLogWrap(hand http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println(r.Method, r.URL.Path)
-		hand.ServeHTTP(w, r)
-	})
 }
 
 func (s *Server) All(c *gin.Context) {
@@ -214,6 +236,8 @@ func (s *Server) DeleteByID(c *gin.Context) {
 // ####### BANK ACCOUNT #########
 
 func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	// check user_id exist
 	user, err := s.GetByID(int(bankAccount.UserID))
 	if err != nil {
@@ -221,7 +245,6 @@ func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 	}
 
 	// check account_number exist
-
 	now := time.Now()
 	bankAccount.CreatedAt = now
 	bankAccount.UpdatedAt = now
@@ -235,6 +258,8 @@ func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 }
 
 func (s *UserServiceImp) GetBankAccountsByUserID(id int) ([]BankAccount, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	fmt.Println("GetBankAccountsByUserId " + strconv.Itoa(id))
 	rows, err := s.db.Query("SELECT * FROM bank_accounts WHERE user_id = $1", id)
 	if err != nil {
@@ -297,6 +322,8 @@ func (s *Server) DeleteAccountByBankAccountID(c *gin.Context) {
 }
 
 func (s *BankAccountServiceImp) DeleteAccountByBankAccountID(id int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	stmt := "DELETE FROM bank_accounts WHERE id = $1"
 	_, err := s.db.Exec(stmt, id)
 	if err != nil {
@@ -321,6 +348,8 @@ func (s *Server) DepositByID(c *gin.Context) {
 }
 
 func (s *BankAccountServiceImp) Deposit(id int, amount int) (*BankAccount, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	stmt := "SELECT * FROM bank_accounts WHERE id = $1"
 	row := s.db.QueryRow(stmt, id)
 	var bankAccount BankAccount
@@ -369,6 +398,8 @@ func (s *Server) WithdrawByID(c *gin.Context) {
 }
 
 func (s *BankAccountServiceImp) Withdraw(id int, amount int) (*BankAccount, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	stmt := "SELECT * FROM bank_accounts WHERE id = $1"
 	row := s.db.QueryRow(stmt, id)
 	var bankAccount BankAccount
@@ -414,6 +445,8 @@ func (s *Server) Transfer(c *gin.Context) {
 }
 
 func (s *TransferServiceImp) Transfer(from string, to string, amount int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	// query from account
 	stmt := "SELECT * FROM bank_accounts WHERE account_number = $1"
 	row := s.db.QueryRow(stmt, from)
@@ -435,11 +468,14 @@ func (s *TransferServiceImp) Transfer(from string, to string, amount int) error 
 	// check balance from account
 	balanceFrom := fromAccount.Balance
 	if balanceFrom < amount {
-		return errors.New("Balance lower amount")
+		return errors.New("Balance less than amount")
 	}
 
 	// update balance from account before add amount to receiver
 	fromAccount.Balance = balanceFrom - amount
+	now := time.Now()
+	fromAccount.CreatedAt = now
+	fromAccount.UpdatedAt = now
 
 	stmt = "UPDATE bank_accounts SET balance = $2 WHERE account_number = $1"
 	_, err = s.db.Exec(stmt, from, fromAccount.Balance)
@@ -449,6 +485,9 @@ func (s *TransferServiceImp) Transfer(from string, to string, amount int) error 
 
 	// update balance to account after ... amount to receiver
 	toAccount.Balance = toAccount.Balance + amount
+	now = time.Now()
+	toAccount.CreatedAt = now
+	toAccount.UpdatedAt = now
 
 	stmt = "UPDATE bank_accounts SET balance = $2 WHERE account_number = $1"
 	_, err = s.db.Exec(stmt, to, toAccount.Balance)
@@ -458,18 +497,30 @@ func (s *TransferServiceImp) Transfer(from string, to string, amount int) error 
 
 	return nil
 }
+
+func (s *Server) AuthTodo(c *gin.Context) {
+	user, _, ok := c.Request.BasicAuth()
+	if ok {
+		row := s.db.QueryRow("SELECT key FROM secrets WHERE key = $1", user)
+		if err := row.Scan(&user); err == nil {
+			return
+		}
+	}
+	c.AbortWithStatus(http.StatusUnauthorized)
+}
+
 func setupRoute(s *Server) *gin.Engine {
 	r := gin.New()
 	r.Use(RequestLogger())
 	users := r.Group("/users")
 	bankAccounts := r.Group("/bankAccounts")
 	transfers := r.Group("/transfers")
-	//admin := r.Group("/admin")
+	admin := r.Group("/admin")
 
-	//admin.Use(gin.BasicAuth(gin.Accounts{
-	//	"admin": "1234",
-	//}))
-	//users.Use(s.AuthTodo)
+	admin.Use(gin.BasicAuth(gin.Accounts{
+		"admin": "1234",
+	}))
+	users.Use(s.AuthTodo)
 	users.GET("/", s.All)
 	users.POST("/", s.Create)
 	users.GET("/:id", s.GetByID)
@@ -478,10 +529,13 @@ func setupRoute(s *Server) *gin.Engine {
 
 	users.POST("/:id/bankAccount", s.CreateBankAccount)
 	users.GET("/:id/bankAccount", s.GetBankAccountsByUserID)
+
+	bankAccounts.Use(s.AuthTodo)
 	bankAccounts.DELETE("/:id", s.DeleteAccountByBankAccountID)
 	bankAccounts.PUT("/:id/withdraw", s.WithdrawByID)
 	bankAccounts.PUT("/:id/deposit", s.DepositByID)
 
+	transfers.Use(s.AuthTodo)
 	transfers.POST("/", s.Transfer)
 	//admin.POST("/secrets", s.CreateSecret)
 
@@ -518,6 +572,10 @@ func StartServer() {
 		created_at TIMESTAMP WITHOUT TIME ZONE,
 		updated_at TIMESTAMP WITHOUT TIME ZONE
 	);
+	CREATE TABLE IF NOT EXISTS secrets (
+		id SERIAL PRIMARY KEY,
+		key TEXT
+	);
 	`
 
 	if _, err := db.Exec(createTable); err != nil {
@@ -534,6 +592,9 @@ func StartServer() {
 			db: db,
 		},
 		transferService: &TransferServiceImp{
+			db: db,
+		},
+		secretService: &SecretServiceImp{
 			db: db,
 		},
 	}
