@@ -53,15 +53,15 @@ type UserService interface {
 	Insert(user *User) error
 	InsertBankAccount(bankAccount *BankAccount) error
 	GetByID(id int) (*User, error)
-	GetBankAccountsByUserId(user int) ([]BankAccount, error)
+	GetBankAccountsByUserID(user int) ([]BankAccount, error)
 	Update(id int, first_name string, last_name string) (*User, error)
 	DeleteByID(id int) error
 }
 
 type BankAccountService interface {
-	//Deposit(userId int, balance int) (*BankAccount, error)
-	//Withdraw(userId int, balance int) (*BankAccount, error)
-	DeleteAccountByBankAccountId(bankAccountId int) error
+	Deposit(bankAccountId int, balance int) (*BankAccount, error)
+	Withdraw(bankAccountId int, balance int) (*BankAccount, error)
+	DeleteAccountByBankAccountID(bankAccountId int) error
 	//Transfer(fromAccountNumber int, tooAccountNumber int, balance int) error
 }
 
@@ -225,7 +225,7 @@ func (s *UserServiceImp) InsertBankAccount(bankAccount *BankAccount) error {
 	return nil
 }
 
-func (s *UserServiceImp) GetBankAccountsByUserId(id int) ([]BankAccount, error) {
+func (s *UserServiceImp) GetBankAccountsByUserID(id int) ([]BankAccount, error) {
 	fmt.Println("GetBankAccountsByUserId " + strconv.Itoa(id))
 	rows, err := s.db.Query("SELECT * FROM bank_accounts WHERE user_id = $1", id)
 	if err != nil {
@@ -269,9 +269,9 @@ func (s *Server) CreateBankAccount(c *gin.Context) {
 	c.JSON(http.StatusCreated, bankAccount)
 }
 
-func (s *Server) GetBankAccountsByUserId(c *gin.Context) {
+func (s *Server) GetBankAccountsByUserID(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	bankAccounts, err := s.userService.GetBankAccountsByUserId(id)
+	bankAccounts, err := s.userService.GetBankAccountsByUserID(id)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
 		return
@@ -279,21 +279,106 @@ func (s *Server) GetBankAccountsByUserId(c *gin.Context) {
 	c.JSON(http.StatusOK, bankAccounts)
 }
 
-func (s *Server) DeleteAccountByBankAccountId(c *gin.Context) {
+func (s *Server) DeleteAccountByBankAccountID(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	if err := s.bankAccountService.DeleteAccountByBankAccountId(id); err != nil {
+	if err := s.bankAccountService.DeleteAccountByBankAccountID(id); err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
 		return
 	}
 }
 
-func (s *BankAccountServiceImp) DeleteAccountByBankAccountId(id int) error {
+func (s *BankAccountServiceImp) DeleteAccountByBankAccountID(id int) error {
 	stmt := "DELETE FROM bank_accounts WHERE id = $1"
 	_, err := s.db.Exec(stmt, id)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (s *Server) DepositByID(c *gin.Context) {
+	h := map[string]int{}
+	if err := c.ShouldBindJSON(&h); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, err)
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	todo, err := s.bankAccountService.Deposit(id, h["amount"])
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, todo)
+}
+
+func (s *BankAccountServiceImp) Deposit(id int, amount int) (*BankAccount, error) {
+	stmt := "SELECT id, user_id, amount FROM bank_accounts WHERE id = $1"
+	row := s.db.QueryRow(stmt, id)
+	var bankAccount BankAccount
+	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.Balance)
+	if err != nil {
+		return nil, err
+	}
+
+	balance := bankAccount.Balance
+	b := balance + amount
+	bankAccount.Balance = b
+
+	stmt = "UPDATE bank_accounts SET balance = $2 WHERE id = $1"
+	_, err = s.db.Exec(stmt, id, b)
+	if err != nil {
+		return nil, err
+	}
+
+	return &bankAccount, nil
+}
+
+func (s *Server) GetBankAccountByBankAccountId(id int) (*BankAccount, error) {
+	stmt := "SELECT id, user_id, amount FROM bank_accounts WHERE id = $1"
+	row := s.db.QueryRow(stmt, id)
+	var bankAccount BankAccount
+	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.Balance)
+	if err != nil {
+		return nil, err
+	}
+	return &bankAccount, nil
+}
+
+func (s *Server) WithdrawByID(c *gin.Context) {
+	h := map[string]int{}
+	if err := c.ShouldBindJSON(&h); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, err)
+		return
+	}
+	id, _ := strconv.Atoi(c.Param("id"))
+	todo, err := s.bankAccountService.Withdraw(id, h["amount"])
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusOK, todo)
+}
+
+func (s *BankAccountServiceImp) Withdraw(id int, amount int) (*BankAccount, error) {
+	stmt := "SELECT id, user_id, amount FROM bank_accounts WHERE id = $1"
+	row := s.db.QueryRow(stmt, id)
+	var bankAccount BankAccount
+	err := row.Scan(&bankAccount.ID, &bankAccount.UserID, &bankAccount.Balance)
+	if err != nil {
+		return nil, err
+	}
+
+	balance := bankAccount.Balance
+	b := balance - amount
+	bankAccount.Balance = b
+
+	stmt = "UPDATE bank_accounts SET balance = $2 WHERE id = $1"
+	_, err = s.db.Exec(stmt, id, b)
+	if err != nil {
+		return nil, err
+	}
+
+	return &bankAccount, nil
 }
 
 func setupRoute(s *Server) *gin.Engine {
@@ -314,8 +399,10 @@ func setupRoute(s *Server) *gin.Engine {
 	users.DELETE("/:id", s.DeleteByID)
 
 	users.POST("/:id/bankAccount", s.CreateBankAccount)
-	users.GET("/:id/bankAccount", s.GetBankAccountsByUserId)
-	bankAccounts.DELETE("/:id", s.DeleteAccountByBankAccountId)
+	users.GET("/:id/bankAccount", s.GetBankAccountsByUserID)
+	bankAccounts.DELETE("/:id", s.DeleteAccountByBankAccountID)
+	bankAccounts.PUT("/:id/withdraw", s.WithdrawByID)
+	bankAccounts.PUT("/:id/deposit", s.DepositByID)
 	//admin.POST("/secrets", s.CreateSecret)
 
 	return r
