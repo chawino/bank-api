@@ -530,7 +530,7 @@ func setupRoute(s *Server) *gin.Engine {
 	r.Use(RequestLogger())
 	users := r.Group("/users")
 	bankAccounts := r.Group("/bankAccounts")
-	transfer := r.Group("/transfer")
+	transfers := r.Group("/transfers")
 	admin := r.Group("/admin")
 
 	admin.Use(gin.BasicAuth(gin.Accounts{
@@ -551,8 +551,8 @@ func setupRoute(s *Server) *gin.Engine {
 	bankAccounts.PUT("/:id/withdraw", s.WithdrawByID)
 	bankAccounts.PUT("/:id/deposit", s.DepositByID)
 
-	transfer.Use(s.AuthTodo)
-	transfer.POST("/", s.Transfer)
+	transfers.Use(s.AuthTodo)
+	transfers.POST("/", s.Transfer)
 
 	admin.POST("/secrets", s.CreateSecret)
 
