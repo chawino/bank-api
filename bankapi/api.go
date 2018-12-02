@@ -59,11 +59,9 @@ type UserService interface {
 }
 
 type BankAccountService interface {
-	Insert(userId int, bankAccount *BankAccount) error
-	GetByID(userId int) (*BankAccount, error)
 	//Deposit(userId int, balance int) (*BankAccount, error)
 	//Withdraw(userId int, balance int) (*BankAccount, error)
-	//DeleteByID(userId int) error
+	DeleteAccountByBankAccountId(bankAccountId int) error
 	//Transfer(fromAccountNumber int, tooAccountNumber int, balance int) error
 }
 
@@ -281,11 +279,28 @@ func (s *Server) GetBankAccountsByUserId(c *gin.Context) {
 	c.JSON(http.StatusOK, bankAccounts)
 }
 
+func (s *Server) DeleteAccountByBankAccountId(c *gin.Context) {
+	id, _ := strconv.Atoi(c.Param("id"))
+	if err := s.bankAccountService.DeleteAccountByBankAccountId(id); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+}
+
+func (s *BankAccountServiceImp) DeleteAccountByBankAccountId(id int) error {
+	stmt := "DELETE FROM bank_accounts WHERE id = $1"
+	_, err := s.db.Exec(stmt, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func setupRoute(s *Server) *gin.Engine {
 	r := gin.New()
 	r.Use(RequestLogger())
 	users := r.Group("/users")
-	//_ := r.Group("/bankAccount")
+	bankAccount := r.Group("/bankAccount")
 	//admin := r.Group("/admin")
 
 	//admin.Use(gin.BasicAuth(gin.Accounts{
@@ -300,6 +315,7 @@ func setupRoute(s *Server) *gin.Engine {
 
 	users.POST("/:id/bankAccount", s.CreateBankAccount)
 	users.GET("/:id/bankAccount", s.GetBankAccountsByUserId)
+	bankAccount.DELETE("/:id", s.DeleteAccountByBankAccountId)
 	//admin.POST("/secrets", s.CreateSecret)
 
 	return r
