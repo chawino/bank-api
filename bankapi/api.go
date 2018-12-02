@@ -77,6 +77,19 @@ type SecretServiceImp struct {
 	db *sql.DB
 }
 
+func (s *Server) CreateSecret(c *gin.Context) {
+	var secret Secret
+	if err := c.ShouldBindJSON(&secret); err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, err)
+		return
+	}
+	if err := s.secretService.Insert(&secret); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, err)
+		return
+	}
+	c.JSON(http.StatusCreated, secret)
+}
+
 func (s *SecretServiceImp) Insert(secret *Secret) error {
 	row := s.db.QueryRow("INSERT INTO secrets (key) values ($1) RETURNING id", secret.Key)
 
@@ -514,7 +527,7 @@ func setupRoute(s *Server) *gin.Engine {
 	r.Use(RequestLogger())
 	users := r.Group("/users")
 	bankAccounts := r.Group("/bankAccounts")
-	transfers := r.Group("/transfers")
+	transfer := r.Group("/transfer")
 	admin := r.Group("/admin")
 
 	admin.Use(gin.BasicAuth(gin.Accounts{
@@ -535,9 +548,10 @@ func setupRoute(s *Server) *gin.Engine {
 	bankAccounts.PUT("/:id/withdraw", s.WithdrawByID)
 	bankAccounts.PUT("/:id/deposit", s.DepositByID)
 
-	transfers.Use(s.AuthTodo)
-	transfers.POST("/", s.Transfer)
-	//admin.POST("/secrets", s.CreateSecret)
+	transfer.Use(s.AuthTodo)
+	transfer.POST("/", s.Transfer)
+
+	admin.POST("/secrets", s.CreateSecret)
 
 	return r
 }
